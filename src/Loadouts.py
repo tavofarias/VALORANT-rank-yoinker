@@ -2,7 +2,6 @@ import time
 import requests
 from colr import color
 from src.constants import sockets, hide_names
-import json
 
 
 class Loadouts:
@@ -26,9 +25,21 @@ class Loadouts:
             players = players["AllyTeam"]["Players"]
             team_id = pregame_stats['Teams'][0]['TeamID']
             PlayerInventorys = self.Requests.fetch("glz", f"/pregame/v1/matches/{match_id}/loadouts", "get")
-        for player in range(len(players)):
+        else:
+            # Default values in case state is neither "game" nor "pregame"
+            team_id = "Blue"
+            PlayerInventorys = {"Loadouts": []}
+            
+        # Ensure we don't exceed bounds when accessing PlayerInventorys
+        max_players = min(len(players), len(PlayerInventorys["Loadouts"]))
+        if len(players) != len(PlayerInventorys["Loadouts"]):
+            self.log(f"Warning: Players count ({len(players)}) doesn't match loadouts count ({len(PlayerInventorys['Loadouts'])})")
+        for player in range(max_players):
             if team_id == "Red":
                 invindex = player + len(players) - len(PlayerInventorys["Loadouts"])
+                # Ensure invindex is within bounds
+                if invindex < 0 or invindex >= len(PlayerInventorys["Loadouts"]):
+                    continue
             else:
                 invindex = player
             inv = PlayerInventorys["Loadouts"][invindex]
@@ -70,7 +81,11 @@ class Loadouts:
         final_json = final_final_json["Players"]
         if state == "game":
             PlayerInventorys = PlayerInventorys["Loadouts"]
-            for i in range(len(PlayerInventorys)):
+            # Ensure we don't exceed the bounds of either list
+            max_iterations = min(len(PlayerInventorys), len(players))
+            if len(players) != len(PlayerInventorys):
+                self.log(f"Warning: Players count ({len(players)}) doesn't match loadouts count ({len(PlayerInventorys)}) in convertLoadoutToJsonArray")
+            for i in range(max_iterations):
                 PlayerInventory = PlayerInventorys[i]["Loadout"]
                 final_json.update(
                     {
